@@ -25,13 +25,13 @@ namespace DataKube.Function
         private HttpResponseData getHandling(HttpRequestData req){
             var response = req.CreateResponse(HttpStatusCode.OK);
             response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-            Dictionary<String, String>? cred = JsonSerializer.Deserialize<Dictionary<String, String>>(File.ReadAllText("./media.json"));
+            // Dictionary<String, String>? cred = JsonSerializer.Deserialize<Dictionary<String, String>>(File.ReadAllText("./media.json"));
 
             String? mode = req.Query["hub.mode"];
             String? token = req.Query["hub.verify_token"];
             String? challenge = req.Query["hub.challenge"];
 
-            if (mode == "subscribe" && token == cred["verifyToken"]){
+            if (mode == "subscribe" && token == "Dota2fan"){
                 response.WriteString(challenge);
                 return response;
             }
