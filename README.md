@@ -1,1 +1,0 @@
-# azfunc-datakube
