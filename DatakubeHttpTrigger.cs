@@ -31,7 +31,7 @@ namespace DataKube.Function
             String? token = req.Query["hub.verify_token"];
             String? challenge = req.Query["hub.challenge"];
 
-            if (mode == "subcribe" && token == cred["verifyToken"]){
+            if (mode == "subscribe" && token == cred["verifyToken"]){
                 response.WriteString(challenge);
                 return response;
             }
