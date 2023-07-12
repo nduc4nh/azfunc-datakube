@@ -6,6 +6,8 @@ using Azure.Storage.Files.DataLake;
 using Azure.Storage;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace DataKube.Function
 {
@@ -18,7 +20,37 @@ namespace DataKube.Function
             // response.WriteString("Welcome to Azure Functions haha!");
 
             MessResponse? data =  JsonSerializer.Deserialize<MessResponse>(req.Body); 
+             string responseJson = JsonSerializer.Serialize(data);
+            string user = data.getReceiverId();
+            string time = DateTime.Now.ToString("MM_dd_yyyy");
+
             response.WriteString("hi" + data.ToString());
+
+            StorageSharedKeyCredential cred = new StorageSharedKeyCredential("datakube", _configuration["accessToken"]);
+            String dfsUri = _configuration["datalakeUrl"];
+            
+            //Create File System client using DataLakeServiceClient
+            DataLakeServiceClient serviceClient = new DataLakeServiceClient(new Uri(dfsUri), cred);
+            DataLakeFileSystemClient fsClient = serviceClient.GetFileSystemClient("landing");
+
+            DataLakeDirectoryClient dirClient = fsClient.GetDirectoryClient("landing");
+            if (!dirClient.Exists()) dirClient.Create();
+
+            DataLakeDirectoryClient conversationDirClient  = dirClient.GetSubDirectoryClient("conversation");
+            if (!conversationDirClient.Exists()) conversationDirClient.Create();
+
+            DataLakeDirectoryClient userDirClient = conversationDirClient.GetSubDirectoryClient(user); 
+            if (!userDirClient.Exists()) userDirClient.Create();
+
+            DataLakeDirectoryClient userDateDirClient = userDirClient.GetSubDirectoryClient(time); 
+            if (!userDateDirClient.Exists()) userDateDirClient.Create();
+
+            DataLakeFileClient fileClient = userDateDirClient.GetFileClient("user_conversation.json");
+            // fileClient.Create();
+
+            MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(responseJson));
+            fileClient.Upload(stream, true);
+
             return response;
         }
 
@@ -30,19 +62,23 @@ namespace DataKube.Function
             String? mode = req.Query["hub.mode"];
             String? token = req.Query["hub.verify_token"];
             String? challenge = req.Query["hub.challenge"];
-
-            if (mode == "subscribe" && token == "Dota2fan"){
+            String? realToken = _configuration["verifyKey"];
+            if (mode == "subscribe" && token == realToken){
                 response.WriteString(challenge);
                 return response;
             }
+            
+            Console.WriteLine($"{realToken}");
+
             return req.CreateResponse(HttpStatusCode.Forbidden);
         }
         
         private readonly ILogger _logger;
-
-        public DatakubeHttpTrigger(ILoggerFactory loggerFactory)
+        private readonly IConfiguration _configuration;
+        public DatakubeHttpTrigger(ILoggerFactory loggerFactory, IConfiguration configuration)
         {
             _logger = loggerFactory.CreateLogger<DatakubeHttpTrigger>();
+            _configuration = configuration;
         }
 
         [Function("DatakubeHttpTrigger")]
